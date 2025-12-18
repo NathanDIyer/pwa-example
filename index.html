@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Counter">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>Counter</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      padding: 20px;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .counter {
+      font-size: 8rem;
+      font-weight: 200;
+      margin: 2rem 0;
+      min-width: 200px;
+      text-align: center;
+    }
+    
+    .buttons {
+      display: flex;
+      gap: 20px;
+    }
+    
+    button {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: none;
+      font-size: 2.5rem;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    
+    button:active {
+      transform: scale(0.95);
+      opacity: 0.8;
+    }
+    
+    .minus {
+      background: #e94560;
+      color: white;
+    }
+    
+    .plus {
+      background: #0f3460;
+      color: white;
+      border: 2px solid #e94560;
+    }
+    
+    .reset {
+      margin-top: 3rem;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.5);
+      width: auto;
+      height: auto;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="counter" id="count">0</div>
+  <div class="buttons">
+    <button class="minus" onclick="decrement()">−</button>
+    <button class="plus" onclick="increment()">+</button>
+  </div>
+  <button class="reset" onclick="reset()">Reset</button>
+
+  <script>
+    let count = parseInt(localStorage.getItem('count')) || 0;
+    document.getElementById('count').textContent = count;
+
+    function increment() {
+      count++;
+      update();
+    }
+
+    function decrement() {
+      count--;
+      update();
+    }
+
+    function reset() {
+      count = 0;
+      update();
+    }
+
+    function update() {
+      document.getElementById('count').textContent = count;
+      localStorage.setItem('count', count);
+    }
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
