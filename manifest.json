@@ -1,10 +1,10 @@
 {
-  "name": "Counter",
-  "short_name": "Counter",
+  "name": "Fiesta Clicker",
+  "short_name": "Fiesta",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#1a1a2e",
+  "background_color": "#ff6b6b",
+  "theme_color": "#feca57",
   "icons": [
     {
       "src": "test.png",
