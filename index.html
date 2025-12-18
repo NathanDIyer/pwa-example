@@ -106,6 +106,27 @@
       }
     }
     
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px) rotate(-1deg); }
+      75% { transform: translateX(5px) rotate(1deg); }
+    }
+    
+    @keyframes shakeBonusFloat {
+      0% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(0.5);
+      }
+      50% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-50px) scale(1.2);
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-100px) scale(1);
+      }
+    }
+    
     .upgrades {
       display: flex;
       gap: 10px;
@@ -158,6 +179,7 @@
   <div class="stats">
     <div>Points per click: <span id="clickPower">1</span></div>
     <div>Auto-clickers: <span id="autoClickers">0</span></div>
+    <div>🎉 Shake your phone for bonus points! 🎉</div>
   </div>
   
   <div class="upgrades">
@@ -183,7 +205,9 @@
       autoClickers: parseInt(localStorage.getItem('fiestaAutoClickers')) || 0,
       powerUpgradeCost: parseInt(localStorage.getItem('fiestaPowerCost')) || 10,
       autoClickerCost: parseInt(localStorage.getItem('fiestaAutoCost')) || 50,
-      soundEnabled: localStorage.getItem('fiestaSoundEnabled') !== 'false'
+      soundEnabled: localStorage.getItem('fiestaSoundEnabled') !== 'false',
+      lastShake: 0,
+      shakeBonus: 0
     };
 
     // Audio context for sound effects
@@ -257,6 +281,146 @@
       const btn = document.getElementById('soundToggle');
       if (btn) {
         btn.textContent = gameState.soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+      }
+    }
+
+    // Shake detection variables
+    let acceleration = { x: 0, y: 0, z: 0 };
+    let lastAcceleration = { x: 0, y: 0, z: 0 };
+    let shakeThreshold = 15;
+    
+    // Handle shake event
+    function onShake() {
+      const now = Date.now();
+      const shakeCooldown = 2000; // 2 seconds between shakes
+      
+      if (now - gameState.lastShake < shakeCooldown) return;
+      
+      gameState.lastShake = now;
+      
+      // Calculate shake bonus (5-15x current click power)
+      const bonusMultiplier = Math.floor(Math.random() * 11) + 5; // 5-15
+      const shakeBonus = gameState.clickPower * bonusMultiplier;
+      gameState.score += shakeBonus;
+      gameState.shakeBonus = shakeBonus;
+      
+      // Play special shake sound
+      playShakeSound();
+      
+      // Create shake effect
+      createShakeEffect(bonusMultiplier);
+      
+      // Vibrate if supported
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100, 50, 200]);
+      }
+      
+      updateDisplay();
+    }
+    
+    // Play shake bonus sound
+    function playShakeSound() {
+      if (!gameState.soundEnabled) return;
+      
+      const context = initAudio();
+      if (!context) return;
+      
+      if (context.state === 'suspended') {
+        context.resume();
+      }
+      
+      // Create a maraca-like sound effect
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      const filter = context.createBiquadFilter();
+      
+      oscillator.connect(filter);
+      filter.connect(gainNode);
+      gainNode.connect(context.destination);
+      
+      const now = context.currentTime;
+      
+      // Noise-like sound for maraca effect
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(800, now);
+      oscillator.frequency.exponentialRampToValueAtTime(200, now + 0.3);
+      
+      // High-pass filter for crisp sound
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(400, now);
+      
+      // Quick burst envelope
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.4, now + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      
+      oscillator.start(now);
+      oscillator.stop(now + 0.3);
+    }
+    
+    // Create shake visual effect
+    function createShakeEffect(multiplier) {
+      const body = document.body;
+      
+      // Screen shake
+      body.style.animation = 'shake 0.5s ease-in-out';
+      setTimeout(() => {
+        body.style.animation = '';
+      }, 500);
+      
+      // Bonus text effect
+      const effect = document.createElement('div');
+      effect.className = 'shake-bonus-effect';
+      effect.innerHTML = `🎉 SHAKE BONUS! 🎉<br>+${gameState.shakeBonus} (${multiplier}x)`;
+      effect.style.cssText = `
+        position: fixed;
+        top: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 2rem;
+        font-weight: bold;
+        color: #fff;
+        text-align: center;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        z-index: 1000;
+        animation: shakeBonusFloat 2s ease-out forwards;
+        pointer-events: none;
+      `;
+      
+      document.body.appendChild(effect);
+      
+      setTimeout(() => {
+        if (effect.parentNode) {
+          effect.parentNode.removeChild(effect);
+        }
+      }, 2000);
+    }
+    
+    // Initialize shake detection
+    function initShakeDetection() {
+      if (window.DeviceMotionEvent) {
+        window.addEventListener('devicemotion', function(event) {
+          if (event.accelerationIncludingGravity) {
+            acceleration.x = event.accelerationIncludingGravity.x || 0;
+            acceleration.y = event.accelerationIncludingGravity.y || 0;
+            acceleration.z = event.accelerationIncludingGravity.z || 0;
+            
+            // Calculate shake intensity
+            const deltaX = Math.abs(acceleration.x - lastAcceleration.x);
+            const deltaY = Math.abs(acceleration.y - lastAcceleration.y);
+            const deltaZ = Math.abs(acceleration.z - lastAcceleration.z);
+            
+            const shakeIntensity = deltaX + deltaY + deltaZ;
+            
+            if (shakeIntensity > shakeThreshold) {
+              onShake();
+            }
+            
+            lastAcceleration.x = acceleration.x;
+            lastAcceleration.y = acceleration.y;
+            lastAcceleration.z = acceleration.z;
+          }
+        });
       }
     }
 
@@ -367,6 +531,7 @@
     // Initialize game
     updateDisplay();
     updateSoundButton();
+    initShakeDetection();
     
     // Initialize audio on first user interaction
     document.addEventListener('click', function initAudioOnFirstClick() {
