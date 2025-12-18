@@ -157,6 +157,9 @@
     <button class="upgrade-btn" id="autoUpgrade" onclick="buyAutoClicker()">
       Auto-Clicker<br>Cost: <span id="autoCost">50</span>
     </button>
+    <button class="upgrade-btn" id="soundToggle" onclick="toggleSound()">
+      🔊 Sound On
+    </button>
     <button class="upgrade-btn" onclick="resetGame()">
       Reset Game
     </button>
@@ -169,8 +172,83 @@
       clickPower: parseInt(localStorage.getItem('fiestaClickPower')) || 1,
       autoClickers: parseInt(localStorage.getItem('fiestaAutoClickers')) || 0,
       powerUpgradeCost: parseInt(localStorage.getItem('fiestaPowerCost')) || 10,
-      autoClickerCost: parseInt(localStorage.getItem('fiestaAutoCost')) || 50
+      autoClickerCost: parseInt(localStorage.getItem('fiestaAutoCost')) || 50,
+      soundEnabled: localStorage.getItem('fiestaSoundEnabled') !== 'false'
     };
+
+    // Audio context for sound effects
+    let audioContext;
+    
+    // Initialize audio context
+    function initAudio() {
+      if (!audioContext) {
+        try {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+          console.log('Audio not supported');
+        }
+      }
+      return audioContext;
+    }
+    
+    // Play "Oh La La" sound effect
+    function playOhLaLa() {
+      if (!gameState.soundEnabled) return;
+      
+      const context = initAudio();
+      if (!context) return;
+      
+      if (context.state === 'suspended') {
+        context.resume();
+      }
+      
+      // Create a quick cheerful sound
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      
+      // Create a melody that sounds like "oh la la"
+      const now = context.currentTime;
+      
+      // "Oh" sound - lower pitch
+      oscillator.frequency.setValueAtTime(220, now);
+      oscillator.frequency.linearRampToValueAtTime(280, now + 0.1);
+      
+      // "La" sound - higher pitch  
+      oscillator.frequency.setValueAtTime(330, now + 0.15);
+      oscillator.frequency.linearRampToValueAtTime(350, now + 0.25);
+      
+      // "La" sound - even higher
+      oscillator.frequency.setValueAtTime(440, now + 0.3);
+      oscillator.frequency.linearRampToValueAtTime(400, now + 0.45);
+      
+      // Volume envelope
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.05);
+      gainNode.gain.linearRampToValueAtTime(0.2, now + 0.3);
+      gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
+      
+      oscillator.type = 'sine';
+      oscillator.start(now);
+      oscillator.stop(now + 0.5);
+    }
+    
+    // Toggle sound on/off
+    function toggleSound() {
+      gameState.soundEnabled = !gameState.soundEnabled;
+      localStorage.setItem('fiestaSoundEnabled', gameState.soundEnabled);
+      updateSoundButton();
+    }
+    
+    // Update sound button display
+    function updateSoundButton() {
+      const btn = document.getElementById('soundToggle');
+      if (btn) {
+        btn.textContent = gameState.soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+      }
+    }
 
     // Initialize display
     function updateDisplay() {
@@ -199,6 +277,9 @@
     // Main click function
     function clickSombrero() {
       gameState.score += gameState.clickPower;
+      
+      // Play sound effect
+      playOhLaLa();
       
       // Create click effect
       createClickEffect();
@@ -275,6 +356,13 @@
 
     // Initialize game
     updateDisplay();
+    updateSoundButton();
+    
+    // Initialize audio on first user interaction
+    document.addEventListener('click', function initAudioOnFirstClick() {
+      initAudio();
+      document.removeEventListener('click', initAudioOnFirstClick);
+    }, { once: true });
 
     // Register service worker
     if ('serviceWorker' in navigator) {
