@@ -192,6 +192,9 @@
     <button class="upgrade-btn" id="soundToggle" onclick="toggleSound()">
       🔊 Sound On
     </button>
+    <button class="upgrade-btn" id="musicToggle" onclick="toggleMusic()">
+      🎵 Music On
+    </button>
     <button class="upgrade-btn" onclick="resetGame()">
       Reset Game
     </button>
@@ -206,12 +209,14 @@
       powerUpgradeCost: parseInt(localStorage.getItem('fiestaPowerCost')) || 10,
       autoClickerCost: parseInt(localStorage.getItem('fiestaAutoCost')) || 50,
       soundEnabled: localStorage.getItem('fiestaSoundEnabled') !== 'false',
+      musicEnabled: localStorage.getItem('fiestaMusicEnabled') !== 'false',
       lastShake: 0,
       shakeBonus: 0
     };
 
     // Audio context for sound effects
     let audioContext;
+    let backgroundMusic;
     
     // Initialize audio context
     function initAudio() {
@@ -281,6 +286,74 @@
       const btn = document.getElementById('soundToggle');
       if (btn) {
         btn.textContent = gameState.soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+      }
+    }
+
+    // Initialize background music
+    function initBackgroundMusic() {
+      if (!backgroundMusic) {
+        backgroundMusic = new Audio();
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0.3;
+        
+        // Try to find a music file
+        const musicFiles = ['background.mp3', 'music.mp3', 'fiesta.mp3'];
+        for (const file of musicFiles) {
+          backgroundMusic.src = file;
+          backgroundMusic.load();
+          break; // Use the first one we find
+        }
+        
+        backgroundMusic.addEventListener('canplaythrough', () => {
+          if (gameState.musicEnabled) {
+            playBackgroundMusic();
+          }
+        });
+        
+        backgroundMusic.addEventListener('error', () => {
+          console.log('Background music file not found');
+        });
+      }
+    }
+
+    // Play background music
+    function playBackgroundMusic() {
+      if (backgroundMusic && gameState.musicEnabled) {
+        const playPromise = backgroundMusic.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.log('Music autoplay prevented:', error);
+          });
+        }
+      }
+    }
+
+    // Stop background music
+    function stopBackgroundMusic() {
+      if (backgroundMusic) {
+        backgroundMusic.pause();
+        backgroundMusic.currentTime = 0;
+      }
+    }
+
+    // Toggle background music
+    function toggleMusic() {
+      gameState.musicEnabled = !gameState.musicEnabled;
+      localStorage.setItem('fiestaMusicEnabled', gameState.musicEnabled);
+      
+      if (gameState.musicEnabled) {
+        playBackgroundMusic();
+      } else {
+        stopBackgroundMusic();
+      }
+      updateMusicButton();
+    }
+
+    // Update music button display
+    function updateMusicButton() {
+      const btn = document.getElementById('musicToggle');
+      if (btn) {
+        btn.textContent = gameState.musicEnabled ? '🎵 Music On' : '🎵 Music Off';
       }
     }
 
@@ -531,11 +604,14 @@
     // Initialize game
     updateDisplay();
     updateSoundButton();
+    updateMusicButton();
     initShakeDetection();
+    initBackgroundMusic();
     
     // Initialize audio on first user interaction
     document.addEventListener('click', function initAudioOnFirstClick() {
       initAudio();
+      playBackgroundMusic(); // Try to start music after user interaction
       document.removeEventListener('click', initAudioOnFirstClick);
     }, { once: true });
 
